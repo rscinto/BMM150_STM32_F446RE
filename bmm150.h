@@ -135,6 +135,7 @@ class BMM150 {
 
 
     void i2c_write(short address, short byte, I2C_HandleTypeDef* hi2c1);
+    void i2c_read(short mem_address, int8_t* buffer, short length, short bytes_to_grab, I2C_HandleTypeDef* hi2c1);
     void i2c_read(short address, uint8_t* buffer, short length, I2C_HandleTypeDef* hi2c1);
     void i2c_read(short address, int8_t* buffer, short length, I2C_HandleTypeDef* hi2c1);
     uint8_t i2c_read(uint16_t address, I2C_HandleTypeDef* hi2c1);
