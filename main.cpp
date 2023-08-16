@@ -53,7 +53,9 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-
+float value_offset_x = 0;
+float value_offset_y = 0;
+float value_offset_z = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -69,6 +71,87 @@ static void MX_I2C1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 BMM150 bmm = BMM150();
+
+
+
+
+
+
+void calibrate(uint32_t timeout, I2C_HandleTypeDef* hi2c1) {
+    int16_t value_x_min = 0;
+    int16_t value_x_max = 0;
+    int16_t value_y_min = 0;
+    int16_t value_y_max = 0;
+    int16_t value_z_min = 0;
+    int16_t value_z_max = 0;
+    uint32_t timeStart = 0;
+
+    bmm.read_mag_data(hi2c1);
+    value_x_min = bmm.raw_mag_data.raw_datax;
+    value_x_max = bmm.raw_mag_data.raw_datax;
+    value_y_min = bmm.raw_mag_data.raw_datay;
+    value_y_max = bmm.raw_mag_data.raw_datay;
+    value_z_min = bmm.raw_mag_data.raw_dataz;
+    value_z_max = bmm.raw_mag_data.raw_dataz;
+    HAL_Delay(100);
+
+    timeStart = HAL_GetTick();
+
+    while ((HAL_GetTick() - timeStart) < timeout) {
+        bmm.read_mag_data(hi2c1);
+
+        /* Update x-Axis max/min value */
+        if (value_x_min > bmm.raw_mag_data.raw_datax) {
+            value_x_min = bmm.raw_mag_data.raw_datax;
+            // Serial.print("Update value_x_min: ");
+            // Serial.println(value_x_min);
+
+        } else if (value_x_max < bmm.raw_mag_data.raw_datax) {
+            value_x_max = bmm.raw_mag_data.raw_datax;
+            // Serial.print("update value_x_max: ");
+            // Serial.println(value_x_max);
+        }
+
+        /* Update y-Axis max/min value */
+        if (value_y_min > bmm.raw_mag_data.raw_datay) {
+            value_y_min = bmm.raw_mag_data.raw_datay;
+            // Serial.print("Update value_y_min: ");
+            // Serial.println(value_y_min);
+
+        } else if (value_y_max < bmm.raw_mag_data.raw_datay) {
+            value_y_max = bmm.raw_mag_data.raw_datay;
+            // Serial.print("update value_y_max: ");
+            // Serial.println(value_y_max);
+        }
+
+        /* Update z-Axis max/min value */
+        if (value_z_min > bmm.raw_mag_data.raw_dataz) {
+            value_z_min = bmm.raw_mag_data.raw_dataz;
+            // Serial.print("Update value_z_min: ");
+            // Serial.println(value_z_min);
+
+        } else if (value_z_max < bmm.raw_mag_data.raw_dataz) {
+            value_z_max = bmm.raw_mag_data.raw_dataz;
+            // Serial.print("update value_z_max: ");
+            // Serial.println(value_z_max);
+        }
+
+        //Serial.print(".");
+        HAL_Delay(100);
+
+    }
+
+    value_offset_x = value_x_min + (value_x_max - value_x_min) / 2;
+    value_offset_y = value_y_min + (value_y_max - value_y_min) / 2;
+    value_offset_z = value_z_min + (value_z_max - value_z_min) / 2;
+}
+
+
+
+
+
+
+
 /* USER CODE END 0 */
 
 /**
@@ -78,21 +161,9 @@ BMM150 bmm = BMM150();
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-//	HAL_I2C_MspInit(&hi2c1);
-	//uint8_t TX_Buffer = 0;
-
-	//I2C_CR1_SWRST()
-
-//
-//	HAL_I2C_Master_Transmit_IT(&hi2c1,BMM150_I2C_Address,(uint8_t*)&TX_Buffer,1); //Sending in Interrupt mode
-//
-//	HAL_I2C_Master_Transmit(&hi2c1, BMM150_I2C_Address < 1, (uint8_t*)&TX_Buffer, 4, 1000);
-	//&hi2c1->State = HAL_I2C_STATE_READY; //The state is always busy, so this is hard coded here to get started
-
-	//I2C_MasterReceive_BTF(hi2c1);
-
-
-
+    char message[100];
+    sprintf(message, "Program starting... \r\n");
+    HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -117,86 +188,161 @@ int main(void)
   MX_USART2_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  if (bmm.initialize(&hi2c1) == BMM150_E_ID_NOT_CONFORM) {
-      //Serial.println("Chip ID can not read!");
+  if (bmm.initialize(&hi2c1) == BMM150_E_ID_NOT_CONFORM)
+  {
+	    sprintf(message, "Initialization Failed: Chip ID can not read! \r\n");
+	    HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
       while (1);
-  } else {
-//      Serial.println("Initialize done!");
+  } else
+  {
+	    sprintf(message, "Initialization Successful... \r\n");
+	    HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
   }
 
-  std::queue<float> queue_hdgs;
-  float average = 9999999;
-  int samples = 0;
+  sprintf(message, "Calibration in 3 seconds...\r\n");
+  HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
+
+  calibrate(10000, &hi2c1);
+
+  sprintf(message, "Calibration Complete...\r\n");
+  HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
+
+  std::queue<float> queue_X;
+  std::queue<float> queue_Y;
+  std::queue<float> queue_Z;
+
+  float average_X = 0;
+  float average_Y = 0;
+  float average_Z = 0;
+  int num_samples = 0;
+
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  sprintf(message, "Compass Running...\r\n");
+  HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
   while (1)
   {
-	    bmm150_mag_data value;
-	    bmm.read_mag_data(&hi2c1);
+	char data_stream[100];
 
-	    value.x = bmm.raw_mag_data.raw_datax;
-	    value.y = bmm.raw_mag_data.raw_datay;
-	    value.z = bmm.raw_mag_data.raw_dataz;
+	bmm150_mag_data value;
+	bmm.read_mag_data(&hi2c1);
 
-	    float xyHeading = atan2(value.x, value.y);
-	    float zxHeading = atan2(value.z, value.x);
-	    float heading = xyHeading;
+	value.x = bmm.raw_mag_data.raw_datax - value_offset_x;
+	value.y = bmm.raw_mag_data.raw_datay - value_offset_y;
+	value.z = bmm.raw_mag_data.raw_dataz - value_offset_z;
 
-	    if (heading < 0) {
-	        heading += 2 * M_PI;
-	    }
-	    if (heading > 2 * M_PI) {
-	        heading -= 2 * M_PI;
-	    }
-	    float headingDegrees = heading * 180 / M_PI;
-	    float xyHeadingDegrees = xyHeading * 180 / M_PI;
-	    float zxHeadingDegrees = zxHeading * 180 / M_PI;
-	    samples++;
+	queue_X.push(value.x);
+	queue_Y.push(value.y);
+	queue_Z.push(value.z);
 
-//	    if(samples > 100)
-//	    {
-//	    	average = 9999999;
-//	    	samples = 0;
-//	    }
+
+	//sprintf(data_stream, "x: %d  y: %d  z: %d \r\n", value.x, value.y, value.z);
+	//HAL_UART_Transmit(&huart2, (uint8_t*)&data_stream, strlen(data_stream), 0xFFFF);
+	HAL_Delay(50);
+
+	if(num_samples == 100)
+	{
+		//will be a sum then an average
+		average_X = 0;
+		average_Y = 0;
+		average_Z = 0;
+
+		while(!queue_X.empty())
+		{
+			average_X += queue_X.front();
+			queue_X.pop();
+		}
+		average_X = average_X /100;
+
+		while(!queue_Y.empty())
+		{
+			average_Y += queue_Y.front();
+			queue_Y.pop();
+		}
+		average_Y = average_Y /100;
+
+		while(!queue_Z.empty())
+		{
+			average_Z += queue_Z.front();
+			queue_Z.pop();
+		}
+		average_Z = average_Z /100;
+
+
+
+		float xyHeading = atan2(average_X, average_Y);
+		float zxHeading = atan2(average_Z, average_X);
+		float heading = xyHeading;
+
+		if (heading < 0) {
+			heading += 2 * M_PI;
+		}
+		if (heading > 2 * M_PI) {
+			heading -= 2 * M_PI;
+		}
+
+		float headingDegrees = heading * 180 / M_PI;
+		float xyHeadingDegrees = xyHeading * 180 / M_PI;
+		float zxHeadingDegrees = zxHeading * 180 / M_PI;
+
+		char RX_Buffer_Char[100];
+		sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
+		HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
+
+		num_samples = 0;
+	}
+	num_samples++;
+
+
+
+
+
+//	    float xyHeading = atan2(value.x, value.y);
+//	    float zxHeading = atan2(value.z, value.x);
+//	    float heading = xyHeading;
 //
-//	    if(average == 9999999)
-//	    {
-//	    	queue_hdgs.push(headingDegrees);
+//	    if (heading < 0) {
+//	        heading += 2 * M_PI;
 //	    }
-//	    else
-//	    {
-//	    	if(abs(headingDegrees - average) < 5)
-//	    	{
-//	    		queue_hdgs.push(headingDegrees);
-//	    	}
+//	    if (heading > 2 * M_PI) {
+//	        heading -= 2 * M_PI;
 //	    }
+//	    float headingDegrees = heading * 180 / M_PI;
+//	    float xyHeadingDegrees = xyHeading * 180 / M_PI;
+//	    float zxHeadingDegrees = zxHeading * 180 / M_PI;
+//	    samples++;
+//
+//	    char RX_Buffer_Char[100];
+//	    //sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
+//
+//	    HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
+//	    HAL_Delay(100);
 
 
 
-	    if (queue_hdgs.size() > 20)
-	    {
-
-	    	float sum = 0;
-	        while (!queue_hdgs.empty()) {
-	            sum += queue_hdgs.front();
-	            queue_hdgs.pop();
-	        }
-	        average = sum / 20;
-		    char Average_message[100];
-		    sprintf(Average_message, "Hdg Average: %f \r\n", average);
-		    HAL_UART_Transmit(&huart2, (uint8_t*)&Average_message, strlen(Average_message), 0xFFFF);
-	    }
-
-
-
-
-	    char RX_Buffer_Char[100];
-	    //sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
-
-	    HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
-	    HAL_Delay(100);
+//	    float xyHeading = atan2(value.x, value.y);
+//	    float zxHeading = atan2(value.z, value.x);
+//	    float heading = xyHeading;
+//
+//	    if (heading < 0) {
+//	        heading += 2 * M_PI;
+//	    }
+//	    if (heading > 2 * M_PI) {
+//	        heading -= 2 * M_PI;
+//	    }
+//	    float headingDegrees = heading * 180 / M_PI;
+//	    float xyHeadingDegrees = xyHeading * 180 / M_PI;
+//	    float zxHeadingDegrees = zxHeading * 180 / M_PI;
+//	    samples++;
+//
+//	    char RX_Buffer_Char[100];
+//	    //sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
+//
+//	    HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
+//	    HAL_Delay(100);
 
     /* USER CODE END WHILE */
 
