@@ -72,79 +72,6 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN 0 */
 BMM150 bmm = BMM150();
 
-class roll_averager
-{
-	public:
-		float alpha = 0.5;
-		float w = 0;
-		float sum_x = 0;
-		float sum_x_sq = 0;
-
-	void add(int adder)
-	{
-		w = alpha * w + 1;
-		sum_x = alpha * sum_x + adder;
-		sum_x_sq = alpha * sum_x_sq + adder * adder;
-	}
-
-	void add(float adder)
-	{
-		w = alpha * w + 1;
-		sum_x = alpha * sum_x + adder;
-		sum_x_sq = alpha * sum_x_sq + adder * adder;
-	}
-
-	float average()
-	{
-		return sum_x / w;
-	}
-
-	float std_dev()
-	{
-		float mu = average();
-		float std_dev = sqrt(abs(sum_x_sq/(w - mu * mu)));
-
-		if(mu < 0)
-		{
-			std_dev *= -1;
-		}
-
-		return std_dev;
-	}
-
-	float filter(int x, int num_stdevs)
-	{
-		add(x);
-
-        if(abs(x-average()) > (num_stdevs*std_dev()))
-        {
-        	return average();
-        }
-        else
-        {
-        	return x;
-        }
-	}
-
-	float filter(float x, int num_stdevs)
-	{
-		add(x);
-
-        if(abs(x-average()) > (num_stdevs*std_dev()))
-        {
-        	return average();
-        }
-        else
-        {
-        	return x;
-        }
-	}
-
-};
-
-
-
-
 void calibrate(uint32_t timeout, I2C_HandleTypeDef* hi2c1) {
     int16_t value_x_min = 0;
     int16_t value_x_max = 0;
@@ -213,13 +140,6 @@ void calibrate(uint32_t timeout, I2C_HandleTypeDef* hi2c1) {
     value_offset_y = value_y_min + (value_y_max - value_y_min) / 2;
     value_offset_z = value_z_min + (value_z_max - value_z_min) / 2;
 }
-
-
-
-
-
-
-
 /* USER CODE END 0 */
 
 /**
@@ -275,19 +195,6 @@ int main(void)
   sprintf(message, "Calibration Complete...\r\n");
   HAL_UART_Transmit(&huart2, (uint8_t*)&message, strlen(message), 0xFFFF);
 
-  roll_averager X_averager;
-  roll_averager Y_averager;
-  roll_averager Z_averager;
-
-  roll_averager mega_X_averager;
-  roll_averager mega_Y_averager;
-  roll_averager mega_Z_averager;
-
-  roll_averager Heading_averager;
-
-
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -297,22 +204,12 @@ int main(void)
 
   while (1)
   {
-	int filter_std_devs = 1;
-
 	bmm150_mag_data value;
 	bmm.read_mag_data(&hi2c1);
 
 	value.x = bmm.raw_mag_data.raw_datax - value_offset_x;
 	value.y = bmm.raw_mag_data.raw_datay - value_offset_y;
 	value.z = bmm.raw_mag_data.raw_dataz - value_offset_z;
-
-	X_averager.filter(value.x,filter_std_devs);
-	Y_averager.filter(value.y,filter_std_devs);
-	Z_averager.filter(value.z,filter_std_devs);
-
-//	float xyHeading = atan2(mega_X_averager.filter(X_averager.average(),filter_std_devs), mega_Y_averager.filter(Y_averager.average(),filter_std_devs));
-//	float zxHeading = atan2(mega_Z_averager.filter(Z_averager.average(),filter_std_devs), mega_X_averager.filter(X_averager.average(),filter_std_devs));
-//	float heading = xyHeading;
 
 	float xyHeading = atan2(value.x, value.y);
 	float zxHeading = atan2(value.z, value.x);
@@ -334,54 +231,6 @@ int main(void)
 	HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
 
 	HAL_Delay(100);
-
-
-
-
-
-//	    float xyHeading = atan2(value.x, value.y);
-//	    float zxHeading = atan2(value.z, value.x);
-//	    float heading = xyHeading;
-//
-//	    if (heading < 0) {
-//	        heading += 2 * M_PI;
-//	    }
-//	    if (heading > 2 * M_PI) {
-//	        heading -= 2 * M_PI;
-//	    }
-//	    float headingDegrees = heading * 180 / M_PI;
-//	    float xyHeadingDegrees = xyHeading * 180 / M_PI;
-//	    float zxHeadingDegrees = zxHeading * 180 / M_PI;
-//	    samples++;
-//
-//	    char RX_Buffer_Char[100];
-//	    //sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
-//
-//	    HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
-//	    HAL_Delay(100);
-
-
-
-//	    float xyHeading = atan2(value.x, value.y);
-//	    float zxHeading = atan2(value.z, value.x);
-//	    float heading = xyHeading;
-//
-//	    if (heading < 0) {
-//	        heading += 2 * M_PI;
-//	    }
-//	    if (heading > 2 * M_PI) {
-//	        heading -= 2 * M_PI;
-//	    }
-//	    float headingDegrees = heading * 180 / M_PI;
-//	    float xyHeadingDegrees = xyHeading * 180 / M_PI;
-//	    float zxHeadingDegrees = zxHeading * 180 / M_PI;
-//	    samples++;
-//
-//	    char RX_Buffer_Char[100];
-//	    //sprintf(RX_Buffer_Char, "Hdg deg: %f  X-Y Hdg: %f  Z-X Hdg: %f \r\n", headingDegrees,xyHeadingDegrees, zxHeadingDegrees);
-//
-//	    HAL_UART_Transmit(&huart2, (uint8_t*)&RX_Buffer_Char, strlen(RX_Buffer_Char), 0xFFFF);
-//	    HAL_Delay(100);
 
     /* USER CODE END WHILE */
 

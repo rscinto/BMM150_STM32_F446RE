@@ -39,34 +39,6 @@ void BMM150::read_mag_data(I2C_HandleTypeDef* hi2c1) {
 
 	i2c_read(BMM150_DATA_X_LSB, all_reg, 1, 8, hi2c1);
 
-//	int8_t reg_dataX_LSB = all_reg[0];
-//	int8_t reg_dataX_MSB = all_reg[1];
-//
-//	int8_t reg_dataY_LSB = all_reg[2];
-//	int8_t reg_dataY_MSB = all_reg[3];
-//
-//	int8_t reg_dataZ_LSB = all_reg[4];
-//	int8_t reg_dataZ_MSB = 0;
-
-//    i2c_read(BMM150_DATA_X_LSB, &reg_dataX_LSB, 1, hi2c1);
-//    i2c_read(BMM150_DATA_X_MSB, &reg_dataX_MSB, 1, hi2c1);
-//
-//    i2c_read(BMM150_DATA_Y_LSB, &reg_dataY_LSB, 1, hi2c1);
-//    i2c_read(BMM150_DATA_Y_MSB, &reg_dataY_MSB, 1, hi2c1);
-//
-//    i2c_read(BMM150_DATA_Z_LSB, &reg_dataZ_LSB, 1, hi2c1);
-//    i2c_read(BMM150_DATA_Z_MSB, &reg_dataZ_MSB, 1, hi2c1);
-
-//    int16_t reg_dataX_MSB_wider = reg_dataX_MSB << 5;
-//    raw_mag_data.raw_datax = (int16_t)(reg_dataX_MSB_wider | reg_dataX_LSB);
-//
-//    int16_t reg_dataY_MSB_wider = reg_dataY_MSB << 5;
-//    raw_mag_data.raw_datay = (int16_t)(reg_dataY_MSB_wider | reg_dataY_LSB);
-//
-//    int16_t reg_dataZ_MSB_wider = reg_dataZ_MSB << 5;
-//    raw_mag_data.raw_dataz = (int16_t)(reg_dataZ_MSB_wider | reg_dataZ_LSB);
-
-
     /* Mag X axis data */
 	all_reg[0] = BMM150_GET_BITS(all_reg[0], BMM150_DATA_X);
     /* Shift the MSB data to left by 5 bits */
@@ -357,12 +329,6 @@ void BMM150::i2c_read(short mem_address, int8_t* buffer, short length, short byt
 uint8_t BMM150::i2c_read(uint16_t mem_address, I2C_HandleTypeDef* hi2c1) {
     uint8_t byte;
     HAL_I2C_Mem_Read(hi2c1, (uint16_t)BMM150_I2C_Address<<1, mem_address, (uint16_t) 1, (uint8_t *)&byte, (uint16_t)1, HAL_MAX_DELAY);
-
-//    Wire.beginTransmission(BMM150_I2C_Address);
-//    Wire.write(address);
-//    Wire.endTransmission();
-//    Wire.requestFrom(BMM150_I2C_Address, 1);
-//    byte = Wire.read();
     return byte;
 }
 
